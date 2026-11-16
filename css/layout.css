@@ -1,0 +1,216 @@
+/**
+ * Estructura y distribución espacial (Grid y Flexbox) — Editor de diagramas UML (UML-01)
+ * Define las 5 regiones requeridas: barra superior, paleta lateral, Canvas central,
+ * panel de propiedades y barra de estado, con soporte adaptable.
+ */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  font-family: var(--font-sans);
+  font-size: 16px;
+  color: var(--color-text-primary);
+  background-color: var(--color-bg-app);
+}
+
+.app-shell {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  min-height: 100vh;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* 1. Barra superior */
+.app-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-height: var(--topbar-height);
+  padding: var(--space-2) var(--space-4);
+  background-color: var(--color-bg-surface);
+  border-bottom: var(--border-width) solid var(--color-border);
+  box-shadow: var(--shadow-sm);
+  z-index: 10;
+}
+
+.app-brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.app-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.toolbar-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* Cuerpo central de 3 columnas: Paleta | Lienzo Canvas | Propiedades */
+.app-workspace {
+  display: grid;
+  grid-template-columns: var(--sidebar-left-width) minmax(0, 1fr) var(--sidebar-right-width);
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* 2. Paleta lateral izquierda */
+.palette-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  background-color: var(--color-bg-panel);
+  border-right: var(--border-width) solid var(--color-border);
+  overflow-y: auto;
+}
+
+/* 3. Área central de Canvas */
+.canvas-region {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  background-color: var(--color-bg-canvas-wrap);
+  position: relative;
+}
+
+.canvas-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  background-color: var(--color-bg-subtle);
+  border-bottom: var(--border-width) solid var(--color-border);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.canvas-viewport {
+  flex: 1;
+  min-height: 22rem;
+  position: relative;
+  overflow: auto;
+  padding: var(--space-3);
+  display: flex;
+  align-items: stretch;
+  justify-content: stretch;
+}
+
+.diagram-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-width: 56rem;
+  min-height: 35rem;
+  background-color: var(--color-bg-surface);
+  border: var(--border-width) solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  touch-action: none;
+  user-select: none;
+}
+
+/* 4. Panel lateral derecho de propiedades e inspección accesible */
+.properties-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  background-color: var(--color-bg-panel);
+  border-left: var(--border-width) solid var(--color-border);
+  overflow-y: auto;
+}
+
+/* 5. Barra de estado inferior */
+.app-statusbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-height: var(--statusbar-height);
+  padding: var(--space-1) var(--space-4);
+  background-color: var(--color-bg-surface);
+  border-top: var(--border-width) solid var(--color-border);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}
+
+.statusbar-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+/* Adaptabilidad para pantallas medianas y pequeñas sin ocultar acciones esenciales */
+@media (max-width: 1100px) {
+  .app-shell {
+    height: auto;
+    min-height: 100vh;
+    overflow: visible;
+  }
+
+  .app-workspace {
+    grid-template-columns: 1fr 1fr;
+    grid-template-areas:
+      "canvas canvas"
+      "palette properties";
+    overflow: visible;
+  }
+
+  .canvas-region {
+    grid-area: canvas;
+    min-height: 30rem;
+  }
+
+  .palette-sidebar {
+    grid-area: palette;
+    border-top: var(--border-width) solid var(--color-border);
+  }
+
+  .properties-sidebar {
+    grid-area: properties;
+    border-top: var(--border-width) solid var(--color-border);
+    border-left: none;
+  }
+}
+
+@media (max-width: 720px) {
+  .app-workspace {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "canvas"
+      "palette"
+      "properties";
+  }
+
+  .palette-sidebar {
+    border-right: none;
+  }
+
+  .toolbar-select {
+    min-width: 0;
+    max-width: 100%;
+  }
+}
