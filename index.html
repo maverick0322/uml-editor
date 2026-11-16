@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Editor de Diagramas UML — Casos de Uso y Despliegue</title>
+  <link rel="stylesheet" href="css/variables.css">
+  <link rel="stylesheet" href="css/layout.css">
+  <link rel="stylesheet" href="css/editor.css">
+</head>
+<body>
+  <div class="app-shell">
+    <!-- 1. Barra superior -->
+    <header class="app-header">
+      <div class="app-brand">
+        <h1 class="app-title">Editor de Diagramas UML</h1>
+        <span class="increment-badge" id="increment-indicator">UML-06 · Historial, Navegación y E/S</span>
+      </div>
+
+      <nav class="app-toolbar" aria-label="Acciones del documento y modo de diagrama">
+        <div class="toolbar-group">
+          <label for="diagram-mode-select" class="toolbar-inline-label">Modo UML:</label>
+          <select id="diagram-mode-select" class="form-select toolbar-select">
+            <option value="use-case">Diagrama de Casos de Uso (UML 2.5.1 §18)</option>
+            <option value="deployment">Diagrama de Despliegue (UML 2.5.1 §19)</option>
+          </select>
+        </div>
+
+        <div class="toolbar-group" role="group" aria-label="Operaciones de documento e historial">
+          <button type="button" class="btn" id="btn-new" title="Crear un lienzo vacío en el modo activo">Nuevo vacío</button>
+          <button type="button" class="btn" id="btn-restore-demo" title="Restaurar el diagrama demostrativo del modo activo">Cargar ejemplo</button>
+          <button type="button" class="btn" id="btn-open-json" title="Importar documento UML desde archivo JSON">Abrir JSON</button>
+          <input type="file" id="json-file-input" accept=".json,application/json" hidden />
+          <button type="button" class="btn" id="btn-save-json" title="Guardar documento UML en JSON versionado">Guardar JSON</button>
+          <button type="button" class="btn" id="btn-export-png" title="Exportar diagrama limpio a PNG">Exportar PNG</button>
+          <button type="button" class="btn" id="btn-undo" disabled title="Deshacer (Ctrl+Z)">Deshacer</button>
+          <button type="button" class="btn" id="btn-redo" disabled title="Rehacer (Ctrl+Y / Ctrl+Shift+Z)">Rehacer</button>
+        </div>
+
+        <div class="toolbar-group" role="group" aria-label="Navegación del lienzo (Zoom y Pan)">
+          <button type="button" class="btn" id="btn-pan-left" aria-label="Desplazar vista a la izquierda" title="Desplazar vista a la izquierda (80 px)">←</button>
+          <button type="button" class="btn" id="btn-pan-up" aria-label="Desplazar vista arriba" title="Desplazar vista arriba (80 px)">↑</button>
+          <button type="button" class="btn" id="btn-pan-down" aria-label="Desplazar vista abajo" title="Desplazar vista abajo (80 px)">↓</button>
+          <button type="button" class="btn" id="btn-pan-right" aria-label="Desplazar vista a la derecha" title="Desplazar vista a la derecha (80 px)">→</button>
+          <button type="button" class="btn" id="btn-zoom-out" title="Alejar lienzo">−</button>
+          <span class="toolbar-inline-label" id="zoom-level-indicator" aria-live="polite">100%</span>
+          <button type="button" class="btn" id="btn-zoom-in" title="Acercar lienzo">+</button>
+          <button type="button" class="btn" id="btn-zoom-reset" title="Restablecer vista al 100%">100%</button>
+          <button type="button" class="btn" id="btn-zoom-fit" title="Ajustar diagrama al área visible">Ajustar</button>
+        </div>
+      </nav>
+    </header>
+
+    <!-- Área central de trabajo -->
+    <div class="app-workspace">
+      <!-- 2. Paleta lateral izquierda -->
+      <aside class="palette-sidebar" aria-labelledby="palette-heading">
+        <section class="palette-group">
+          <h2 id="palette-heading" class="section-heading">Paleta de Herramientas</h2>
+          <p class="helper-note" id="palette-mode-note">
+            Elija una herramienta de elemento y haga clic en el lienzo para insertarlo. Pulse Esc para volver a Selección o cancelar un arrastre.
+          </p>
+          <button type="button" class="palette-button palette-button-active" id="btn-tool-select" aria-pressed="true">
+            <span>Seleccionar / Mover</span>
+            <span class="palette-tag">Esc</span>
+          </button>
+        </section>
+
+        <section class="palette-group" aria-labelledby="palette-elements-heading">
+          <h3 id="palette-elements-heading" class="subsection-heading">Elementos UML</h3>
+          <ul id="palette-elements-list" class="palette-list"></ul>
+        </section>
+
+        <section class="palette-group" aria-labelledby="palette-relationships-heading">
+          <h3 id="palette-relationships-heading" class="subsection-heading">Relaciones UML (Activas en UML-03)</h3>
+          <ul id="palette-relationships-list" class="palette-list"></ul>
+        </section>
+      </aside>
+
+      <!-- 3. Lienzo Canvas central -->
+      <main class="canvas-region" aria-labelledby="canvas-document-title">
+        <div class="canvas-banner">
+          <div>
+            <strong id="canvas-document-title">Cargando documento…</strong>
+            <span id="canvas-document-subtitle"></span>
+          </div>
+          <span id="canvas-demo-notice">UML-03: Seleccione relación + origen/destino · Arrastrar para mover/redimensionar · Supr para eliminar · Esc para cancelar</span>
+        </div>
+
+        <div class="canvas-viewport" id="canvas-viewport">
+          <canvas id="uml-canvas" class="diagram-canvas" aria-label="Lienzo interactivo del diagrama UML">
+            Su navegador no soporta el elemento HTML5 Canvas. Utilice el panel lateral derecho para inspeccionar y editar la estructura semántica del diagrama UML.
+          </canvas>
+        </div>
+      </main>
+
+      <!-- 4. Panel lateral derecho de propiedades e inspección DOM accesible -->
+      <aside class="properties-sidebar" aria-labelledby="properties-heading">
+        <section>
+          <h2 id="properties-heading" class="section-heading">Propiedades e Inspección</h2>
+          <div class="form-field">
+            <label for="accessible-entity-select" class="control-label">
+              Seleccionar elemento o relación (DOM / Canvas sincronizados):
+            </label>
+            <select id="accessible-entity-select" class="form-select">
+              <option value="">— Resumen del documento —</option>
+            </select>
+          </div>
+        </section>
+
+        <div id="properties-error-alert" class="alert-error" role="alert" hidden></div>
+
+        <!-- Formulario nativo de edición para el elemento seleccionado (UML-02) -->
+        <section id="element-editor-section" class="inspector-card" aria-labelledby="element-editor-heading" hidden>
+          <h3 id="element-editor-heading" class="subsection-heading">Editar Elemento Seleccionado</h3>
+          <form id="element-properties-form" class="properties-form" novalidate>
+            <div id="element-dynamic-fields" class="properties-fields"></div>
+
+            <fieldset id="element-geometry-section" class="geometry-fieldset">
+              <legend class="subsection-heading">Posición y dimensiones</legend>
+              <div class="geometry-grid">
+                <div class="form-field">
+                  <label for="prop-geom-x" class="control-label">Posición X (px):</label>
+                  <input type="number" step="1" id="prop-geom-x" class="form-input">
+                </div>
+                <div class="form-field">
+                  <label for="prop-geom-y" class="control-label">Posición Y (px):</label>
+                  <input type="number" step="1" id="prop-geom-y" class="form-input">
+                </div>
+                <div class="form-field">
+                  <label for="prop-geom-width" class="control-label">Ancho (px):</label>
+                  <input type="number" step="1" min="1" id="prop-geom-width" class="form-input">
+                </div>
+                <div class="form-field">
+                  <label for="prop-geom-height" class="control-label">Alto (px):</label>
+                  <input type="number" step="1" min="1" id="prop-geom-height" class="form-input">
+                </div>
+              </div>
+              <p class="helper-note" id="prop-geom-readonly-note" hidden>
+                Este tipo de elemento UML no es redimensionable.
+              </p>
+              <div class="form-actions">
+                <button type="button" class="btn" id="btn-apply-position">Aplicar posición</button>
+                <button type="button" class="btn" id="btn-apply-size">Aplicar tamaño</button>
+              </div>
+            </fieldset>
+
+            <div class="form-actions">
+              <button type="submit" class="btn btn-primary" id="btn-apply-properties">
+                Aplicar cambios
+              </button>
+              <button type="button" class="btn btn-danger" id="btn-delete-entity">
+                Eliminar (Supr)
+              </button>
+            </div>
+          </form>
+        </section>
+
+        <!-- Acciones cuando se selecciona una relación existente -->
+        <section id="relationship-actions-section" class="inspector-card" aria-labelledby="relationship-actions-heading" hidden>
+          <h3 id="relationship-actions-heading" class="subsection-heading">Acciones de Relación</h3>
+          <button type="button" class="btn btn-danger" id="btn-delete-relationship">
+            Eliminar relación seleccionada (Supr)
+          </button>
+        </section>
+
+        <!-- Confirmación atómica de Extend en Canvas (DP-03) -->
+        <section id="extend-confirm-section" class="inspector-card" aria-labelledby="extend-confirm-heading" hidden>
+          <h3 id="extend-confirm-heading" class="subsection-heading">Confirmar Relación «extend» (DP-03)</h3>
+          <p class="helper-note" id="extend-confirm-summary"></p>
+          <form id="extend-confirm-form" class="properties-form" novalidate>
+            <div class="form-field">
+              <label for="extend-confirm-ep-select" class="control-label">
+                ExtensionPoint existente en destino:
+              </label>
+              <select id="extend-confirm-ep-select" class="form-select"></select>
+            </div>
+            <div class="form-field">
+              <label for="extend-confirm-new-ep-name" class="control-label">
+                O crear nuevo ExtensionPoint (atómico):
+              </label>
+              <input type="text" id="extend-confirm-new-ep-name" class="form-input" placeholder="Nombre del nuevo punto de extensión">
+            </div>
+            <div class="form-field">
+              <label for="extend-confirm-condition" class="control-label">
+                Condición opcional (condition[0..1]):
+              </label>
+              <input type="text" id="extend-confirm-condition" class="form-input" placeholder="p. ej. monto > 50000">
+            </div>
+            <div class="form-actions">
+              <button type="submit" class="btn btn-primary" id="btn-confirm-extend">
+                Confirmar «extend»
+              </button>
+              <button type="button" class="btn" id="btn-cancel-extend">
+                Cancelar (Esc)
+              </button>
+            </div>
+          </form>
+        </section>
+
+        <!-- Alternativa accesible DOM para crear relaciones (UML-03) -->
+        <section id="relationship-creator-section" class="inspector-card" aria-labelledby="relationship-creator-heading">
+          <h3 id="relationship-creator-heading" class="subsection-heading">Crear Relación (DOM Accesible)</h3>
+          <form id="relationship-creator-form" class="properties-form" novalidate>
+            <div class="form-field">
+              <label for="rel-create-type" class="control-label">Tipo de relación:</label>
+              <select id="rel-create-type" class="form-select"></select>
+            </div>
+            <div class="form-field">
+              <label for="rel-create-source" class="control-label">Origen (sourceId):</label>
+              <select id="rel-create-source" class="form-select"></select>
+            </div>
+            <div class="form-field">
+              <label for="rel-create-target" class="control-label">Destino (targetId):</label>
+              <select id="rel-create-target" class="form-select"></select>
+            </div>
+            <div id="rel-create-extend-wrapper" class="form-field" hidden>
+              <label for="rel-create-extension-point" class="control-label">
+                ExtensionPoint destino (DP-03):
+              </label>
+              <select id="rel-create-extension-point" class="form-select"></select>
+              <label for="rel-create-new-ep-name" class="control-label">
+                O crear nuevo ExtensionPoint:
+              </label>
+              <input type="text" id="rel-create-new-ep-name" class="form-input" placeholder="Nombre del nuevo ExtensionPoint">
+              <label for="rel-create-extend-condition" class="control-label">
+                Condición opcional:
+              </label>
+              <input type="text" id="rel-create-extend-condition" class="form-input" placeholder="p. ej. monto > 50000">
+              <p class="helper-note" id="rel-create-extend-hint" hidden></p>
+            </div>
+            <div class="form-actions">
+              <button type="submit" class="btn btn-primary" id="btn-create-relationship">
+                Crear relación
+              </button>
+            </div>
+          </form>
+        </section>
+
+        <!-- Advertencias de modelado no bloqueantes (§8.2) -->
+        <section id="model-warnings-section" class="inspector-card" aria-labelledby="model-warnings-heading" hidden>
+          <h3 id="model-warnings-heading" class="subsection-heading">Advertencias de Modelado (No bloqueantes)</h3>
+          <ul id="model-warnings-list" class="helper-note"></ul>
+        </section>
+
+        <!-- Resumen de solo lectura del estado en DiagramModel -->
+        <section class="inspector-card" aria-labelledby="inspector-card-heading">
+          <h3 id="inspector-card-heading" class="subsection-heading">Detalle en DiagramModel</h3>
+          <dl id="inspector-details-list" class="property-list"></dl>
+        </section>
+      </aside>
+    </div>
+
+    <!-- 5. Barra de estado inferior -->
+    <footer class="app-statusbar" aria-label="Estado del editor">
+      <div class="statusbar-group">
+        <span>Estado: <strong class="status-pill" id="status-message">Listo (UML-03)</strong></span>
+        <span>Modo activo: <strong id="status-diagram-type">—</strong></span>
+        <span>Herramienta: <strong id="status-active-tool">Selección y manipulación</strong></span>
+      </div>
+      <div class="statusbar-group">
+        <span>Conteo modelo: <strong id="status-model-counts">0 elementos · 0 relaciones</strong></span>
+        <span>Zoom: <strong id="status-zoom">100%</strong></span>
+      </div>
+    </footer>
+  </div>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
